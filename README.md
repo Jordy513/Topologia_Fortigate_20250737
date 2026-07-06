@@ -311,10 +311,10 @@ En la sección **Application Overrides → Add Signatures:**
 
 | Campo | Valor |
 |---|---|
-| Buscar | `WhatsApp.Voice` / `WhatsApp.Video` |
+| Buscar | `WhatsApp_VoIP.Call` |
 | Action | `Block` |
 
-> FortiGate diferencia las llamadas de WhatsApp (`WhatsApp.Voice`, `WhatsApp.Video`) de la mensajería de texto (`WhatsApp`) — esto permite bloquear solo el tráfico de voz/video sin afectar los mensajes de texto.
+> FortiGate diferencia las llamadas de WhatsApp (`WhatsApp_VoIP.Call`) de la mensajería de texto (`WhatsApp`) — esto permite bloquear solo el tráfico de voz/video sin afectar los mensajes de texto.
 
 > Ver evidencia: [07_whatsapp_calls_block.png](#07_whatsapp_calls_blockpng)
 
