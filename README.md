@@ -41,7 +41,7 @@ Los objetivos específicos de seguridad implementados son:
 * Bloquear el acceso a redes sociales desde la LAN de usuarios mediante Application Control e inspección de capa 7.
 * Bloquear las llamadas de voz/video de WhatsApp (manteniendo la mensajería de texto si aplica) mediante Application Control.
 * Bloquear el acceso a `itla.edu.do` y todos sus subdominios mediante DNS Filter y URL filtering.
-* Detectar y bloquear escaneos de red activos (Nmap, Nessus, etc.) mediante el IPS del FortiGate.
+* Detectar y bloquear escaneos de puertos (Nmap, Nessus, etc.) dirigidos al servidor web desde Internet, mediante una **DoS Policy** en la interfaz WAN.
 * Proteger el servidor web de la LAN de servidores mediante WAF (Web Application Firewall) integrado en FortiGate.
 
 ---
@@ -82,7 +82,8 @@ Los objetivos específicos de seguridad implementados son:
   │   redes sociales, WhatsApp calls, itla.edu.do)      │
   │ LAN-USR → LAN-SRV  : Solo HTTP (puerto 80)          │
   │ Internet → LAN-SRV : WAF en tráfico web             │
-  │ Cualquier origen   : IPS activo (bloqueo escaners)  │
+  │ Internet (port1)   : DoS Policy — bloqueo de        │
+  │   escaneos de puertos (tcp_port_scan / udp_scan)    │
   └─────────────────────────────────────────────────────┘
 ```
 
@@ -149,8 +150,6 @@ https://192.168.1.10
 > FortiGate pedirá cambiar la contraseña en el primer inicio de sesión. Definir una contraseña segura antes de continuar.
 
 > Ver evidencia: [00_cli_acceso_inicial.png](#00_cli_acceso_inicialpng)
-
----
 
 ---
 
@@ -365,45 +364,60 @@ Editar `LAN-USR-to-Internet` → Security Profiles:
 
 ### 3.9 Detección y Bloqueo de Escaners de Red
 
-La detección y bloqueo de escaneos de red se implementa mediante un **IPS Profile** con las firmas de detección de Nmap, escaneos de puertos y actividad de reconocimiento.
+La detección y bloqueo de escaneos de puertos (Nmap, Nessus, y similares) **no se implementa con IPS Signatures ni con Application Control** — no existen firmas de IPS con nombres genéricos como `Network.Scan.*` o `Port.Scan` en FortiOS, y la firma de aplicación `Portmap` solo cubre tráfico al protocolo *portmapper/rpcbind*, no un escaneo de puertos general con Nmap.
 
-**Paso 1 — Crear el IPS Sensor:**
+El mecanismo correcto que provee FortiOS para esto es una **DoS Policy** (`Policy & Objects → DoS Policy`), que detecta el comportamiento del tráfico — volumen de conexiones o paquetes por segundo hacia múltiples puertos — en vez de depender de una firma fija.
 
-**Ruta:** `Security Profiles → Intrusion Prevention → Create New`
+**Consideración de diseño — ¿en qué interfaz aplicarla?**
 
-| Campo | Valor |
-|---|---|
-| Name | `IPS-ANTI-SCAN` |
+Una DoS Policy solo inspecciona el tráfico que **entra** por la interfaz configurada (`Incoming Interface`). El objetivo de este laboratorio es proteger el servidor web contra reconocimiento hecho por un atacante externo, así que la policy debe aplicarse en **port1 (WAN)** — el tráfico de un escaneo interno entre PCs de la LAN de usuarios queda fuera del alcance de este objetivo y no se cubre aquí.
 
-**Paso 2 — Agregar firmas de escaneo:**
+> Nota técnica: en FortiGate solo puede existir **una DoS Policy activa por interfaz**. Si más adelante se necesita cubrir escaneos originados dentro de la LAN de usuarios, se debe crear una segunda policy con `Incoming Interface: port2`, ya que no se pueden apilar varias DoS Policies sobre la misma interfaz.
 
-En el sensor creado → **IPS Signatures → Add Signatures:**
+**Configuración:**
 
-| Firma | Acción |
-|---|---|
-| `Network.Scan.*` (categoría) | `Block` |
-| `Nmap.*` | `Block` |
-| `Port.Scan` | `Block` |
-| `Host.Sweep` | `Block` |
-
-También habilitar la opción de **Rate-Based Signatures** para detectar escaneos por volumen de conexiones:
+**Ruta:** `Policy & Objects → DoS Policy → Create New`
 
 | Campo | Valor |
 |---|---|
-| Rate-Based Signatures | ✅ Enable |
-| Threshold | `100 per minute` |
+| Name | `DOS-ANTI-SCAN-WAN` |
+| Incoming Interface | `port1 (WAN)` |
+| Source Address | `all` |
+| Destination Address | `20.25.37.130` (IP del Servidor Web) |
+| Service | `ALL` |
 
-**Paso 3 — Aplicar a las políticas relevantes:**
+**Anomalías (L4 Anomalies) a configurar dentro de la misma policy:**
 
-El IPS debe aplicarse en las políticas de tráfico entrante hacia los servidores y en la política de LAN a servidores:
+| Anomaly | Logging | Action | Threshold (lab) | Threshold (default) |
+|---|---|---|---|---|
+| `tcp_port_scan` | ✅ Enable | **`Block`** | `5` | 1000 |
+| `udp_scan` | ✅ Enable | **`Block`** | `5` | 2000 |
 
-Editar `LAN-USR-to-SRV-HTTP-only` → Security Profiles:
+> **Importante:** al crear la anomalía, habilitar el toggle de **Logging** no es suficiente — hay que hacer clic explícitamente en el botón **`Block`** dentro de la columna Action (por defecto queda en `Disable`, que solo registra sin bloquear).
 
-| Campo | Valor |
-|---|---|
-| Intrusion Prevention | ✅ `IPS-ANTI-SCAN` |
+> **Sobre el threshold:** los valores por defecto de Fortinet (1000–2000 paquetes/seg) están pensados para tráfico de producción a gran escala, no para verse en una demo corta de laboratorio. Bajarlos a `5` hace que un escaneo de Nmap dispare el bloqueo casi de inmediato.
 
-> Ver evidencia: [09_ips_anti_scan.png](#09_ips_anti_scanpng)
+**Verificación práctica:**
+
+Desde el host físico (fuera del FortiGate, simulando Internet), correr:
+
+```bash
+nmap -sS 192.168.1.10
+```
+
+o directamente contra la IP pública/NAT que apunte al servidor web.
+
+**Dónde revisar el resultado:**
+
+Los eventos de DoS **no aparecen en `Log & Report → Forward Traffic`** (error corregido respecto a una versión anterior de este documento). Se revisan en:
+
+```
+Log & Report → Security Events → Anomaly
+```
+
+Ahí se debe ver el origen del escaneo, la anomalía disparada (`tcp_port_scan` / `udp_scan`), la acción `Blocked` y el conteo de paquetes que superó el threshold.
+
+> Ver evidencia: [09_dos_anti_scan.png](#09_dos_anti_scanpng)
 
 ---
 
@@ -445,7 +459,6 @@ Dentro de **Signature groups → Main**, habilitar:
 | Service | `HTTP, HTTPS` |
 | Action | `ACCEPT` |
 | Web Application Firewall | ✅ `WAF-SERVIDOR-WEB` |
-| Intrusion Prevention | ✅ `IPS-ANTI-SCAN` |
 | Log Allowed Traffic | `All Sessions` |
 
 > Ver evidencia: [10_waf_servidor_web.png](#10_waf_servidor_webpng)
@@ -458,18 +471,18 @@ Las siguientes capturas de pantalla documentan cada punto de configuración de l
 
 | # | Archivo | Descripción |
 |---|---|---|
-| 00 | [`00_cli_acceso_inicial.png`](screenshots/00_cli_acceso_inicial.png) | Terminal CLI del FortiGate mostrando la configuración de port2 con IP `20.25.37.1/25` y `allowaccess http https ssh ping`, seguido de la pantalla de login de la GUI en el navegador. |
+| 00 | [`00_cli_acceso_inicial.png`](screenshots/00_cli_acceso_inicial.png) | Terminal CLI del FortiGate mostrando la configuración de port1 con IP `192.168.1.10/24` y `allowaccess http https ssh ping`, seguido de la pantalla de login de la GUI en el navegador. |
 | 01 | [`01_interfaces_configuradas.png`](screenshots/01_interfaces_configuradas.png) | Vista de `Network → Interfaces` mostrando port1 (WAN: 192.168.1.10/24), port2 (LAN-USUARIOS: 20.25.37.1/25) y port3 (LAN-SERVIDORES: 20.25.37.129/28) con sus roles y estados. |
 | 02 | [`02_dhcp_lan_usuarios.png`](screenshots/02_dhcp_lan_usuarios.png) | Vista del servidor DHCP configurado en port2 mostrando el rango `20.25.37.2 – 20.25.37.126`, el gateway `20.25.37.1` y los servidores DNS. |
 | 03 | [`03_ruta_default.png`](screenshots/03_ruta_default.png) | Vista de `Network → Static Routes` mostrando la ruta `0.0.0.0/0` apuntando al gateway `192.168.1.2` por port1. |
 | 04 | [`04_politica_nat_internet.png`](screenshots/04_politica_nat_internet.png) | Política `LAN-USR-to-Internet` mostrando src: port2, dst: port1, acción ACCEPT con NAT habilitado usando la IP de la interfaz saliente. |
 | 05 | [`05_politica_http_solo.png`](screenshots/05_politica_http_solo.png) | Política `LAN-USR-to-SRV-HTTP-only` mostrando src: port2, dst: port3, servicio: HTTP únicamente, acción ACCEPT — posicionada sobre cualquier política ALL entre esos segmentos. |
 | 06 | [`06_app_control_social_media.png`](screenshots/06_app_control_social_media.png) | Perfil `APP-CTRL-USUARIOS` en `Security Profiles → Application Control` mostrando la categoría "Social Media" con acción Block. |
-| 07 | [`07_whatsapp_calls_block.png`](screenshots/07_whatsapp_calls_block.png) | Vista de Application Overrides en el perfil `APP-CTRL-USUARIOS` mostrando `WhatsApp.Voice` y `WhatsApp.Video` con acción Block. |
+| 07 | [`07_whatsapp_calls_block.png`](screenshots/07_whatsapp_calls_block.png) | Vista de Application Overrides en el perfil `APP-CTRL-USUARIOS` mostrando `WhatsApp_VoIP.Call` con acción Block. |
 | 08 | [`08_dns_web_filter_itla.png`](screenshots/08_dns_web_filter_itla.png) | Vista del DNS Filter mostrando la entrada wildcard `itla.edu.do` con acción Block, y el Web Filter con `*.itla.edu.do` bloqueado. |
-| 09 | [`09_ips_anti_scan.png`](screenshots/09_ips_anti_scan.png) | Sensor IPS `IPS-ANTI-SCAN` mostrando las firmas de categoría `Network.Scan`, `Nmap` y `Port.Scan` con acción Block. |
+| 09 | [`09_dos_anti_scan.png`](screenshots/09_dos_anti_scan.png) | Policy `DOS-ANTI-SCAN-WAN` en `Policy & Objects → DoS Policy` mostrando Incoming Interface `port1`, destino `20.25.37.130`, y las anomalías `tcp_port_scan` y `udp_scan` en acción Block con threshold ajustado a 5. |
 | 10 | [`10_waf_servidor_web.png`](screenshots/10_waf_servidor_web.png) | Perfil WAF `WAF-SERVIDOR-WEB` mostrando los grupos de firmas SQL Injection, XSS y Generic Attacks habilitados con acción Block. |
-| 11 | [`11_politica_waf_aplicada.png`](screenshots/11_politica_waf_aplicada.png) | Política `Internet-to-WebServer-WAF` mostrando el perfil WAF y el IPS asignados en los Security Profiles. |
+| 11 | [`11_politica_waf_aplicada.png`](screenshots/11_politica_waf_aplicada.png) | Política `Internet-to-WebServer-WAF` mostrando el perfil WAF asignado en Security Profiles. |
 | 12 | [`12_tabla_politicas_orden.png`](screenshots/12_tabla_politicas_orden.png) | Vista completa de `Policy & Objects → Firewall Policy` mostrando todas las políticas en el orden correcto de aplicación. |
 | 13 | [`13_dhcp_leases.png`](screenshots/13_dhcp_leases.png) | Vista de leases DHCP activos en port2 mostrando al menos un cliente con IP asignada del rango, confirmando que el DHCP funciona. |
 | 14 | [`14_ping_internet_ok.png`](screenshots/14_ping_internet_ok.png) | Ping exitoso desde un cliente de la LAN de usuarios hacia `8.8.8.8` — confirma NAT y ruta por defecto funcionando. |
@@ -477,6 +490,7 @@ Las siguientes capturas de pantalla documentan cada punto de configuración de l
 | 16 | [`16_bloqueo_rrss.png`](screenshots/16_bloqueo_rrss.png) | Intento fallido de acceso a una red social (ej. facebook.com) desde la LAN de usuarios — página de bloqueo de FortiGate. |
 | 17 | [`17_bloqueo_itla.png`](screenshots/17_bloqueo_itla.png) | Intento fallido de acceso a `itla.edu.do` y un subdominio (ej. `moodle.itla.edu.do`) — página de bloqueo de FortiGate. |
 | 18 | [`18_log_forward_traffic.png`](screenshots/18_log_forward_traffic.png) | Vista de `Log & Report → Forward Traffic` mostrando entradas de tráfico aceptado (HTTP a servidor) y bloqueado (red social) con IPs y políticas aplicadas. |
+| 19 | [`19_log_anomaly_scan.png`](screenshots/19_log_anomaly_scan.png) | Vista de `Log & Report → Security Events → Anomaly` mostrando el evento `tcp_port_scan` bloqueado tras correr Nmap contra el servidor web desde el host físico. |
 
 ---
 
@@ -499,6 +513,7 @@ Las siguientes capturas de pantalla documentan cada punto de configuración de l
 * ✅ Acceso HTTP al servidor web desde la LAN de usuarios.
 * ✅ Bloqueo demostrado: red social inaccesible desde la LAN de usuarios.
 * ✅ Bloqueo demostrado: `itla.edu.do` inaccesible con mensaje de bloqueo.
+* ✅ Escaneo de puertos (`nmap -sS`) contra el servidor web desde el host físico, mostrando el bloqueo en `Log & Report → Security Events → Anomaly`.
 * ✅ Vista de `Log & Report → Forward Traffic` con los logs de tráfico aceptado y bloqueado.
 
 ---
@@ -508,6 +523,7 @@ Las siguientes capturas de pantalla documentan cada punto de configuración de l
 * Fortinet. (2024). *FortiGate Administration Guide 7.x — Firewall Policies*.
 * Fortinet. (2024). *FortiGate Administration Guide 7.x — Application Control*.
 * Fortinet. (2024). *FortiGate Administration Guide 7.x — Web Application Firewall*.
-* Fortinet. (2024). *FortiGate Administration Guide 7.x — Intrusion Prevention System*.
+* Fortinet. (2024). *FortiGate Administration Guide 7.x — DoS Policy*.
 * Fortinet. (2024). *FortiGate Administration Guide 7.x — DNS Filter*.
+* Fortinet Community. *Technical Tip: How to block Port Scan or Port Scanning application*. community.fortinet.com.
 * OWASP. (2024). *OWASP Top 10 Web Application Security Risks*. owasp.org.
