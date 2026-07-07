@@ -491,6 +491,8 @@ Las siguientes capturas de pantalla documentan cada punto de configuración de l
 | 17 | [`17_bloqueo_itla.png`](screenshots/17_bloqueo_itla.png) | Intento fallido de acceso a `itla.edu.do` y un subdominio (ej. `moodle.itla.edu.do`) — página de bloqueo de FortiGate. |
 | 18 | [`18_log_forward_traffic.png`](screenshots/18_log_forward_traffic.png) | Vista de `Log & Report → Forward Traffic` mostrando entradas de tráfico aceptado (HTTP a servidor) y bloqueado (red social) con IPs y políticas aplicadas. |
 | 19 | [`19_log_anomaly_scan.png`](screenshots/19_log_anomaly_scan.png) | Vista de `Log & Report → Security Events → Anomaly` mostrando el evento `tcp_port_scan` bloqueado tras correr Nmap contra el servidor web desde el host físico. |
+| 20 | [`20_waf_sqli_bloqueado.png`](screenshots/20_waf_sqli_bloqueado.png) | Intento de SQL Injection (`' OR '1'='1' --`) contra el formulario de login del servidor web desde WAN — página de bloqueo de FortiGate mostrando la firma de ataque detectada (SQL Injection) por el perfil `WAF-SERVIDOR-WEB`. |
+| 21 | [`21_log_waf_sqli.png`](screenshots/21_log_waf_sqli.png) | Vista de `Log & Report → Security Events` (filtro Application/WAF) mostrando el evento bloqueado con la firma SQL Injection, IP origen y la acción `Blocked`. |
 
 ---
 
