@@ -1,4 +1,4 @@
-# FortiGate — Topología de Seguridad con Políticas Avanzadas
+# FortiGate — Topología de Seguridad 
 
 ### Jordy Jose Rosario Ortiz · Matrícula: 2025-0737
 
