@@ -498,11 +498,9 @@ Las siguientes capturas de pantalla documentan cada punto de configuración de l
 
 ## 5. Video Demostrativo
 
-🎥 **[Ver demostración en YouTube](#)**
+🎥 **[Ver demostración en YouTube](https://youtu.be/i2C1Tw8JZUg)**
 
-> *(Enlace disponible en `videos.txt` en la raíz del repositorio)*
-
-**Duración:** máximo 8 minutos
+**Duración:** 6:31
 
 **Contenido del video:**
 
