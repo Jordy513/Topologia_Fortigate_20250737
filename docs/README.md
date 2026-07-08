@@ -1,4 +1,4 @@
-# Documentación técnica — VPN Client-to-Site L2TP sobre IPSec (IKEv1)
+# Documentación técnica — FortiGate Topología de Seguridad
 
 Este directorio contiene la documentación formal del laboratorio.
 
