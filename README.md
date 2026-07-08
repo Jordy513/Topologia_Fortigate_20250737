@@ -409,8 +409,6 @@ o directamente contra la IP pública/NAT que apunte al servidor web.
 
 **Dónde revisar el resultado:**
 
-Los eventos de DoS **no aparecen en `Log & Report → Forward Traffic`** (error corregido respecto a una versión anterior de este documento). Se revisan en:
-
 ```
 Log & Report → Security Events → Anomaly
 ```
