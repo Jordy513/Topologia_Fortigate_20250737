@@ -149,7 +149,7 @@ https://192.168.1.10
 
 > FortiGate pedirá cambiar la contraseña en el primer inicio de sesión. Definir una contraseña segura antes de continuar.
 
-> Ver evidencia: [00_cli_acceso_inicial.png](#00_cli_acceso_inicialpng)
+> Ver evidencia: [00_cli_acceso_inicial.png](screenshots/00_cli_acceso_inicialpng)
 
 ---
 
@@ -189,7 +189,7 @@ Editar cada interfaz haciendo doble clic sobre ella:
 | IP/Netmask | `20.25.37.129 / 255.255.255.240` |
 | Administrative access | `Ping` |
 
-> Ver evidencia: [01_interfaces_configuradas.png](#01_interfaces_configuradaspng)
+> Ver evidencia: [01_interfaces_configuradas.png](screenshots/01_interfaces_configuradaspng)
 
 ---
 
@@ -206,7 +206,7 @@ Editar cada interfaz haciendo doble clic sobre ella:
 | DNS Server | `8.8.8.8` / `8.8.4.4` |
 | Lease Time | `1 day` |
 
-> Ver evidencia: [02_dhcp_lan_usuarios.png](#02_dhcp_lan_usuariospng)
+> Ver evidencia: [02_dhcp_lan_usuarios.png](screenshots/02_dhcp_lan_usuariospng)
 
 ---
 
@@ -222,7 +222,7 @@ Editar cada interfaz haciendo doble clic sobre ella:
 | Distance | `10` |
 | Status | `Enable` |
 
-> Ver evidencia: [03_ruta_default.png](#03_ruta_defaultpng)
+> Ver evidencia: [03_ruta_default.png](screenshots/03_ruta_defaultpng)
 
 ---
 
@@ -244,7 +244,7 @@ El NAT en FortiGate se habilita directamente en la política de firewall que per
 | NAT | ✅ Enable — `Use Outgoing Interface Address` |
 | Security Profiles | *(se asignan en secciones siguientes)* |
 
-> Ver evidencia: [04_politica_nat_internet.png](#04_politica_nat_internetpng)
+> Ver evidencia: [04_politica_nat_internet.png](screenshots/04_politica_nat_internetpng)
 
 ---
 
@@ -268,7 +268,7 @@ Esta política permite **únicamente tráfico HTTP (puerto 80)** desde la LAN de
 
 > **Importante:** Esta política debe quedar **por encima** de cualquier política que permita ALL entre estos segmentos. El orden de las políticas en FortiGate es top-down — la primera que hace match se aplica.
 
-> Ver evidencia: [05_politica_http_solo.png](#05_politica_http_solopng)
+> Ver evidencia: [05_politica_http_solo.png](screenshots/05_politica_http_solopng)
 
 ---
 
@@ -296,7 +296,7 @@ Editar la política `LAN-USR-to-Internet` → Security Profiles:
 
 > El Application Control de FortiGate identifica aplicaciones de redes sociales (Facebook, Instagram, TikTok, Twitter/X, etc.) por su firma de tráfico, independientemente del puerto o protocolo que usen.
 
-> Ver evidencia: [06_app_control_social_media.png](#06_app_control_social_mediapng)
+> Ver evidencia: [06_app_control_social_media.png](screenshots/06_app_control_social_mediapng)
 
 ---
 
@@ -315,7 +315,7 @@ En la sección **Application Overrides → Add Signatures:**
 
 > FortiGate diferencia las llamadas de WhatsApp (`WhatsApp_VoIP.Call`) de la mensajería de texto (`WhatsApp`) — esto permite bloquear solo el tráfico de voz/video sin afectar los mensajes de texto.
 
-> Ver evidencia: [07_whatsapp_calls_block.png](#07_whatsapp_calls_blockpng)
+> Ver evidencia: [07_whatsapp_calls_block.png](screenshots/07_whatsapp_calls_blockpng)
 
 ---
 
@@ -358,7 +358,7 @@ Editar `LAN-USR-to-Internet` → Security Profiles:
 | DNS Filter | ✅ `DNS-FILTER-USUARIOS` |
 | Web Filter | ✅ `WEB-FILTER-USUARIOS` |
 
-> Ver evidencia: [08_dns_web_filter_itla.png](#08_dns_web_filter_itlapng)
+> Ver evidencia: [08_dns_web_filter_itla.png](screenshots/08_dns_web_filter_itlapng)
 
 ---
 
@@ -417,7 +417,7 @@ Log & Report → Security Events → Anomaly
 
 Ahí se debe ver el origen del escaneo, la anomalía disparada (`tcp_port_scan` / `udp_scan`), la acción `Blocked` y el conteo de paquetes que superó el threshold.
 
-> Ver evidencia: [09_dos_anti_scan.png](#09_dos_anti_scanpng)
+> Ver evidencia: [09_dos_anti_scan.png](screenshots/09_dos_anti_scanpng)
 
 ---
 
@@ -461,7 +461,7 @@ Dentro de **Signature groups → Main**, habilitar:
 | Web Application Firewall | ✅ `WAF-SERVIDOR-WEB` |
 | Log Allowed Traffic | `All Sessions` |
 
-> Ver evidencia: [10_waf_servidor_web.png](#10_waf_servidor_webpng)
+> Ver evidencia: [10_waf_servidor_web.png](screenshots/10_waf_servidor_webpng)
 
 ---
 
